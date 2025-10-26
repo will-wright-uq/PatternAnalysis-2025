@@ -191,7 +191,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     dice_loss = MCDiceLoss()
 
     def loss_fn(logits, targets):
-        return ce_loss(logits, targets) + dice_loss(logits, targets)
+        return 0.5*ce_loss(logits, targets) + 0.5*dice_loss(logits, targets)
 
     # optimiser + scheduler
     optimiser = optim.Adam(
@@ -280,9 +280,9 @@ if __name__ == "__main__":
     data_path = os.path.join(project_dir, "data")
 
     #hyperparams
-    num_epochs = 100
-    batch_size = 16
-    learning_rate = 0.001
+    num_epochs = 50
+    batch_size = 8
+    learning_rate = 0.01
     
     # train the model with above params
     model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
