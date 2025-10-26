@@ -76,6 +76,7 @@ def plot_loss(train_losses, val_losses, output_path='loss_over_epochs.png'):
 
     print(f"Loss plot (Cross-Entropy + Dice) saved to {output_path}")
 
+
 ####### TRAINING AND EVALUATION ########
 def train_one_epoch(model, loader, loss_fn, opt, device):
     """
@@ -185,7 +186,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     model = BasicUNet(in_channels=1, num_classes=6, base_features=32).to(device)
 
     # loss function is CE + Multi-Class Dice
-    class_weights = torch.tensor([0.5, 0.5, 1.0, 1.5, 2.0, 3.0], device=device, dtype=torch.float32)
+    class_weights = torch.tensor([0.5, 0.5, 1.0, 1.0, 2.0, 3.0], device=device, dtype=torch.float32)
     ce_loss = nn.CrossEntropyLoss(weight=class_weights)
     dice_loss = MCDiceLoss()
 
@@ -279,7 +280,7 @@ if __name__ == "__main__":
     data_path = os.path.join(project_dir, "data")
 
     #hyperparams
-    num_epochs = 50
+    num_epochs = 60
     batch_size = 8
     learning_rate = 0.01
     
