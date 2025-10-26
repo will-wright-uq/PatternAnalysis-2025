@@ -147,6 +147,30 @@ class DiceLoss(nn.Module):
             dice_bc = dice_bc * class_weights.view(1, -1)
 
         return 1 - dice_bc.mean()
+    
+def dice_coefficient(logits: torch.Tensor, target: torch.Tensor, num_classes: int = 6) -> list[float]:
+    """
+    Function to claculate per-class Dice-Sorenson coefficient
+    """
+    pred = logits.argmax(dim=1)
+
+    scores= []
+    for c in range(num_classes):
+        pred_i = (pred == c).float()
+        tgt_i  = (target == c).float()
+
+        intersection = (pred_i * tgt_i).sum()
+        cardinality = pred_i.sum() + tgt_i.sum()
+
+        # if both empty, make 1
+        if cardinality == 0:
+            dice = 1
+        else:
+            dice = (2 * intersection / cardinality).item()
+
+        scores.append(dice)
+
+    return scores   
 
 if __name__ == "__main__":
     model = BasicUNet(in_channels=1, 
@@ -155,3 +179,11 @@ if __name__ == "__main__":
                       bilinear=True)
     param_sum = sum(p.numel() for p in model.parameters())
     print(f"----Total param sum: {param_sum}----")
+
+    x = torch.randn(2, 1, 256, 128)
+    out = model(x)
+    print("Input:", x.shape, "Output:", out.shape)
+
+    y = torch.randint(0, 6, (2, 256, 128))
+    criterion = DiceLoss()
+    print("Dice loss:", round(criterion(out, y).item(), 4))
