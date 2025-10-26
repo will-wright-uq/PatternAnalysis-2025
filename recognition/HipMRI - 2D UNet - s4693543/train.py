@@ -63,16 +63,7 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
     model.train()
     total_loss = 0
 
-    # dice scores for each class
-    per_class_dice = {
-        0: [],  # background
-        1: [],  # body
-        2: [],  # bones
-        3: [],  # bladdr
-        4: [],  # rectum
-        5: [],  # prostate
-    }
-
+    # for dice coeff calculation
     eps = 1e-6
     inter = torch.zeros(6, device=device)
     p_sum = torch.zeros(6, device=device)
@@ -85,7 +76,7 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
-        # foreward pass
+        # forward pass
         opt.zero_grad(set_to_none=True)
         logits = model(images)
         batch_loss = loss_fn(logits, labels)
@@ -97,10 +88,6 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
 
         # store dice scores FOR THIS BATCH ONLY
         with torch.no_grad():
-            # dice_scores = dice_score(logits, labels, num_classes=6)
-            # for i, val in enumerate(dice_scores):
-            #     per_class_dice[i].append(val)
-
             pred = torch.argmax(logits, dim=1)
             for c in range(6):
                 pc = (pred == c).float()
@@ -109,15 +96,8 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
                 p_sum[c] += pc.sum()
                 t_sum[c] += tc.sum()
 
-        # progress_bar.set_postfix({"current batch prostate dice": f"{dice_scores[5]:.3f}"})
-
     # average stuff across the epoch
     mean_loss = total_loss / max(1, len(loader))
-    # mean_dice = [
-    #     float(np.nanmean(v)) if v else 0.0
-    #     for _, v in sorted(per_class_dice.items(), key=lambda kv: kv[0])
-    # ]
-
     epoch_dice = ((2*inter + eps) / (p_sum + t_sum + eps)).tolist()
 
     return mean_loss, epoch_dice
@@ -129,16 +109,7 @@ def evaluation(model, loader, loss_fn, device):
     model.eval()
     total_loss = 0
 
-    # dice scores for each class
-    per_class_dice = {
-        0: [],  # background
-        1: [],  # body
-        2: [],  # bones
-        3: [],  # bladdr
-        4: [],  # rectum
-        5: [],  # prostate
-    }
-
+    # for dice coeff calculation
     eps = 1e-6
     inter = torch.zeros(6, device=device)
     p_sum = torch.zeros(6, device=device)
@@ -152,15 +123,11 @@ def evaluation(model, loader, loss_fn, device):
             images = images.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
             
-            # foreward pass
+            # forward pass
             logits = model(images)
             batch_loss = loss_fn(logits, labels)
             total_loss += batch_loss.item()
             
-            # store dice scores FOR THIS BATCH ONLY
-            # dice_scores = dice_score(logits, labels, num_classes=6)
-            # for i, score in enumerate(dice_scores):
-            #     per_class_dice[i].append(score)
             pred = torch.argmax(logits, dim=1)
             for c in range(6):
                 pc = (pred == c).float()
@@ -168,20 +135,13 @@ def evaluation(model, loader, loss_fn, device):
                 inter[c] += (pc*tc).sum()
                 p_sum[c] += pc.sum()
                 t_sum[c] += tc.sum()
-            
-            # progress_bar.set_postfix({"current batch prostate dice": f"{dice_scores[5]:.3f}"})
-    
+                
     mean_loss = total_loss / max(1, len(loader))
-    # mean_dice = [
-    #     float(np.nanmean(v)) if v else 0.0
-    #     for _, v in sorted(per_class_dice.items(), key=lambda kv: kv[0])
-    # ]
-
     epoch_dice = ((2*inter + eps) / (p_sum + t_sum + eps)).tolist()
 
     return mean_loss, epoch_dice
 
-def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir="outputs"):
+def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir="outputs"):
     """
     Main training loop
     """
