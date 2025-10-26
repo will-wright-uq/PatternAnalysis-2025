@@ -30,7 +30,7 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
         5: [],  # prostate
     }
 
-    progress_bar = tqdm(loader, desc="Training...", leave=False)
+    progress_bar = tqdm(loader, desc="Training...", leave=True)
 
     for batch in progress_bar:
         images, labels = batch
@@ -45,15 +45,15 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
         # backprop
         batch_loss.backward()
         opt.step()
-        total_loss += float(batch_loss)
+        total_loss += batch_loss.item()
 
-        # store dice scores
+        # store dice scores FOR THIS BATCH ONLY
         with torch.no_grad():
             dice_scores = dice_score(logits, labels, num_classes=6)
             for i, val in enumerate(dice_scores):
                 per_class_dice[i].append(val)
 
-        progress_bar.set_postfix({"prostate class dice": f"{dice_scores[5]:.3f}"})
+        progress_bar.set_postfix({"current batch prostate dice": f"{dice_scores[5]:.3f}"})
 
     # average stuff across the epoch
     mean_loss = total_loss / max(1, len(loader))
@@ -66,7 +66,7 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
 
 def evaluation(model, loader, loss_fn, device):
     """
-    Evaluate the model on the validation set
+    Evaluate the model
     """
     model.eval()
     total_loss = 0
@@ -82,7 +82,7 @@ def evaluation(model, loader, loss_fn, device):
     }
     
     with torch.no_grad():
-        progress_bar = tqdm(loader, desc="Validation...", leave=False)
+        progress_bar = tqdm(loader, desc="Validation...", leave=True)
 
         for batch in progress_bar:
             images, labels = batch
@@ -92,14 +92,14 @@ def evaluation(model, loader, loss_fn, device):
             # foreward pass
             logits = model(images)
             batch_loss = loss_fn(logits, labels)
-            total_loss += float(batch_loss)
+            total_loss += batch_loss.item()
             
-            # store dice scores
+            # store dice scores FOR THIS BATCH ONLY
             dice_scores = dice_score(logits, labels, num_classes=6)
             for i, score in enumerate(dice_scores):
                 per_class_dice[i].append(score)
             
-            progress_bar.set_postfix({"prostate class dice": f"{dice_scores[5]:.3f}"})
+            progress_bar.set_postfix({"current batch prostate dice": f"{dice_scores[5]:.3f}"})
     
     mean_loss = total_loss / max(1, len(loader))
     mean_dice = [
@@ -109,36 +109,127 @@ def evaluation(model, loader, loss_fn, device):
 
     return mean_loss, mean_dice
 
-if __name__ == "__main__":
+def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir="outputs"):
+    """
+    Main training loop
+    """
+    #create folder to store models/outputs
+    os.makedirs(output_dir, exist_ok=True)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    project_dir = os.path.dirname(__file__)
-    data_path = os.path.join(project_dir, "data")
-
+    print("Getting data loaders...")
     train_loader, val_loader, test_loader = get_dataloaders(
         data_path=data_path,
-        batch_size=2,
-        num_workers=2,
+        batch_size=batch_size,
+        num_workers=4,
         categorical_masks=False
     )
 
-    #model + loss + optimiser 
+    # model
+    print("Model instantiation...")
     model = BasicUNet(in_channels=1, num_classes=6, base_features=32).to(device)
-    loss_fn = MCDiceLoss()
-    opt = optim.Adam(model.parameters(), lr=1e-4)
 
-    #test a single training epoch
-    print("\nRunning test for one training epcch...")
-    train_loss, train_dice = train_one_epoch(model, train_loader, loss_fn, opt, device)
+    # loss function is CE + Multi-Class Dice
+    class_weights = torch.tensor([0.5, 0.5, 1.0, 1.5, 2.0, 2.0], device=device, dtype=torch.float32)
+    ce_loss = nn.CrossEntropyLoss(weight=class_weights)
+    dice_loss = MCDiceLoss()
 
-    print(f"\nFinished training epoch:")
-    print(f"  Avg loss: {train_loss:.4f}")
-    print(f"  Mean Dice per class: {train_dice}")
+    def loss_fn(logits, targets):
+        return ce_loss(logits, targets) + dice_loss(logits, targets)
 
-    print("\nRunning evaluation on validation set...")
-    val_loss, val_dice = evaluation(model, val_loader, loss_fn, device)
+    # optimiser + scheduler
+    optimiser = optim.Adam(
+        model.parameters(), 
+        lr=learning_rate, 
+        weight_decay=1e-5
+    )
 
-    print(f"\nValidation results:")
-    print(f"  Avg val loss: {val_loss:.4f}")
-    print(f"  Mean Val Dice per class: {val_dice}")
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimiser, 
+        mode="max", 
+        factor=0.25, 
+        patience=5
+    )
+
+    # segmentation label mapping
+    labels_map = {
+        0: "Background",
+        1: "Body",
+        2: "Bones",
+        3: "Bladder",
+        4: "Rectum",
+        5: "Prostate",
+    }
+
+    train_loss, val_loss = [], []
+    train_dice_old, val_dice_old = [], []
+    best_val_min_dice = 0
+
+    print(f"----------{num_epochs} epochs----------")
+
+    for epoch in range(1, num_epochs + 1):
+        print("*" * 40)
+        print(f"Progress: Epoch {epoch}/{num_epochs}")
+        print("*" * 40)
+
+        tr_loss, tr_dice = train_one_epoch(model, train_loader, loss_fn, optimiser, device)
+        va_loss, va_dice = evaluation(model, val_loader, loss_fn, device)
+
+        # step scheduler on the hardest class (min over classes)
+        min_val_dice = min(va_dice)
+        scheduler.step(min_val_dice)
+
+        train_loss.append(tr_loss)
+        val_loss.append(va_loss)
+        train_dice_old.append(tr_dice)
+        val_dice_old.append(va_dice)
+
+        # pretty print with labels
+        def fmt_dice(dlist):
+            return ", ".join(f"{labels_map[i]}: {dlist[i]:.4f}" for i in range(6))
+        
+        print(f"\nTRAIN RESULTS EPOCH {epoch}")
+        print(f"    CE + Multi-Class Dice Loss (Train): {tr_loss:.4f}")
+        print(f"    Class-Based Dice Coefficients (Train): {fmt_dice(tr_dice)}")
+        print(f"VAL RESULTS EPOCH {epoch}")
+        print(f"    CE + Multi-Class Dice Loss (Val): {va_loss:.4f}")
+        print(f"    Class-Based Dice Coefficients (Val): {fmt_dice(va_dice)}")
+
+        # checkpointing best model
+        if min_val_dice > best_val_min_dice:
+            best_val_min_dice = min_val_dice
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimiser_state_dict": optimiser.state_dict(),
+                    "val_dice": va_dice,
+                    "val_loss": va_loss,
+                },
+                os.path.join(output_dir, "max_dice_model.pth"),
+            )
+            print(f"\nBest model saved with min dice: {best_val_min_dice:.4f}")
+
+    print("Completed model training; best model saved as max_dice_model.pth with dice:", round(best_val_min_dice, 4))
+
+    return model, train_loss, val_loss, train_dice_scores, val_dice_scores
+
+if __name__ == "__main__":
+    # data_path = "/home/groups/comp3710/HipMRI_Study_open/keras_slices_data"
+    project_dir = os.path.dirname(__file__)
+    data_path = os.path.join(project_dir, "data")
+
+    num_epochs = 50
+    batch_size = 8
+    learning_rate = 0.01
+    
+    # Train the model
+    model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
+        data_path=data_path,
+        num_epochs=num_epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        output_dir='outputs'
+    )
