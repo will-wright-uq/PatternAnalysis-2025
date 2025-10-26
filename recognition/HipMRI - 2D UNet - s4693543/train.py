@@ -57,7 +57,6 @@ def plot_dice(train_dice, val_dice, output_path='dice_over_epochs.png'):
 def plot_loss(train_losses, val_losses, output_path='loss_over_epochs.png'):
     """
     Plot training and validation loss over epochs.
-    (Loss = Cross-Entropy + Dice Loss)
     """
     epochs = range(1, len(train_losses) + 1)
 
@@ -66,7 +65,7 @@ def plot_loss(train_losses, val_losses, output_path='loss_over_epochs.png'):
     plt.plot(epochs, val_losses, 'r-', label='Validation Loss')
 
     plt.xlabel('Epoch')
-    plt.ylabel('Loss (Avg. of Cross-Entropy and Dice Loss)')
+    plt.ylabel('Dice Loss')
     plt.title('Training and Validation Loss over Epochs')
     plt.grid(True)
     plt.legend(loc='upper right')
@@ -74,7 +73,7 @@ def plot_loss(train_losses, val_losses, output_path='loss_over_epochs.png'):
     plt.savefig(output_path)
     plt.close()
 
-    print(f"Loss plot (Cross-Entropy + Dice) saved to {output_path}")
+    print(f"Loss plot saved to {output_path}")
 
 
 ####### TRAINING AND EVALUATION ########
