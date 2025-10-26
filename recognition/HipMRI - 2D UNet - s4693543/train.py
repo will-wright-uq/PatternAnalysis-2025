@@ -186,12 +186,14 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     model = BasicUNet(in_channels=1, num_classes=6, base_features=32).to(device)
 
     # loss function is CE + Multi-Class Dice
-    class_weights = torch.tensor([0.5, 0.5, 1.0, 1.0, 2.0, 3.0], device=device, dtype=torch.float32)
-    ce_loss = nn.CrossEntropyLoss(weight=class_weights)
+    # class_weights = torch.tensor([0.5, 0.5, 1.0, 1.0, 2.0, 3.0], device=device, dtype=torch.float32)
+    # ce_loss = nn.CrossEntropyLoss(weight=class_weights)
     dice_loss = MCDiceLoss()
 
     def loss_fn(logits, targets):
-        return 0.5*ce_loss(logits, targets) + 0.5*dice_loss(logits, targets)
+        return dice_loss(logits, targets)
+    
+        # return 0.5*ce_loss(logits, targets) + 0.5*dice_loss(logits, targets)
 
     # optimiser + scheduler
     optimiser = optim.Adam(
@@ -203,7 +205,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimiser, 
         mode="max", 
-        factor=0.3, 
+        factor=0.25, 
         patience=10
     )
 
@@ -282,7 +284,7 @@ if __name__ == "__main__":
     #hyperparams
     num_epochs = 50
     batch_size = 8
-    learning_rate = 0.001
+    learning_rate = 0.0001
 
     print("Starting training with params:"
           f"\n    Data path: {data_path}"
