@@ -214,19 +214,20 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir
 
     print("Completed model training; best model saved as max_dice_model.pth with dice:", round(best_val_min_dice, 4))
 
-    return model, train_loss, val_loss, train_dice_scores, val_dice_scores
+    return model, train_loss, val_loss, train_dice_old, val_dice_old
 
 if __name__ == "__main__":
     # data_path = "/home/groups/comp3710/HipMRI_Study_open/keras_slices_data"
     project_dir = os.path.dirname(__file__)
     data_path = os.path.join(project_dir, "data")
 
+    #hyperparams
     num_epochs = 50
     batch_size = 8
     learning_rate = 0.01
     
-    # Train the model
-    model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
+    # train the model with above params
+    model, train_loss, val_loss, train_dice_old, val_dice_old = main(
         data_path=data_path,
         num_epochs=num_epochs,
         batch_size=batch_size,
