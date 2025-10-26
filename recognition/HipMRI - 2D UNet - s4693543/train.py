@@ -6,7 +6,6 @@ Description: Source code for training, validating, testing, and saving the model
 from dataset import get_dataloaders
 from modules import BasicUNet, MCDiceLoss
 
-import numpy as np
 import os
 from tqdm import tqdm
 import torch
@@ -54,6 +53,28 @@ def plot_dice(train_dice, val_dice, output_path='dice_over_epochs.png'):
     plt.close()
 
     print(f"Per-class Dice plot saved to {output_path}")
+
+def plot_loss(train_losses, val_losses, output_path='loss_over_epochs.png'):
+    """
+    Plot training and validation loss over epochs.
+    (Loss = Cross-Entropy + Dice Loss)
+    """
+    epochs = range(1, len(train_losses) + 1)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(epochs, train_losses, 'b-', label='Train Loss')
+    plt.plot(epochs, val_losses, 'r-', label='Validation Loss')
+
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss (Cross-Entropy + Dice)')
+    plt.title('Training and Validation Loss over Epochs')
+    plt.grid(True)
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+    print(f"Loss plot (Cross-Entropy + Dice) saved to {output_path}")
 
 ####### TRAINING AND EVALUATION ########
 def train_one_epoch(model, loader, loss_fn, opt, device):
@@ -248,6 +269,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     print("\nCompleted model training; best model saved as max_dice_model.pth with dice:", round(best_val_min_dice, 4))
 
     plot_dice(train_dice_scores, val_dice_scores, output_path='outputs/dice_progress.png')
+    plot_loss(train_loss, val_loss)
 
     return model, train_loss, val_loss, train_dice_scores, val_dice_scores
 
