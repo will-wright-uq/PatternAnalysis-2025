@@ -13,6 +13,49 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import matplotlib.pyplot as plt
+
+####### PLOTTING HELPERS ########
+def plot_dice(train_dice, val_dice, output_path='dice_over_epochs.png'):
+    """
+    Plot per-class Dice coefficient over epochs (train vs val).
+    Creates a 3x2 subplot layout for the 6 classes.
+    """
+    # epoch range based on training history
+    epochs = range(1, len(train_dice) + 1)
+
+    class_labels = [
+        "Background",
+        "Body",
+        "Bones",
+        "Bladder",
+        "Rectum",
+        "Prostate"
+    ]
+
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    axes = axes.flatten()
+
+    for i, ax in enumerate(axes):
+        train_vals = [epoch_dice[i] for epoch_dice in train_dice]
+        val_vals = [epoch_dice[i] for epoch_dice in val_dice]
+
+        ax.plot(epochs, train_vals, 'b-', label='Train')
+        ax.plot(epochs, val_vals, 'r-', label='Val')
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Dice Score')
+        ax.set_title(f"{class_labels[i]} Class: Dice Coefficient over Epochs")
+        ax.set_ylim(0, 1.05)
+        ax.grid(True)
+        ax.legend(loc='lower right')
+
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+    print(f"Per-class Dice plot saved to {output_path}")
+
+
 def train_one_epoch(model, loader, loss_fn, opt, device):
     """
     Run one training epoch
@@ -58,7 +101,7 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
     # average stuff across the epoch
     mean_loss = total_loss / max(1, len(loader))
     mean_dice = [
-        float(np.mean(v)) if v else 0.0
+        float(np.nanmean(v)) if v else 0.0
         for _, v in sorted(per_class_dice.items(), key=lambda kv: kv[0])
     ]
 
@@ -103,7 +146,7 @@ def evaluation(model, loader, loss_fn, device):
     
     mean_loss = total_loss / max(1, len(loader))
     mean_dice = [
-        float(np.mean(v)) if v else 0.0
+        float(np.nanmean(v)) if v else 0.0
         for _, v in sorted(per_class_dice.items(), key=lambda kv: kv[0])
     ]
 
@@ -128,7 +171,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir
     )
 
     # model
-    print("Model instantiation...")
+    print("Model created.")
     model = BasicUNet(in_channels=1, num_classes=6, base_features=32).to(device)
 
     # loss function is CE + Multi-Class Dice
@@ -164,12 +207,13 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir
     }
 
     train_loss, val_loss = [], []
-    train_dice_old, val_dice_old = [], []
+    train_dice_scores, val_dice_scores = [], []
     best_val_min_dice = 0
 
     print(f"----------{num_epochs} epochs----------")
 
     for epoch in range(1, num_epochs + 1):
+        print("\n")
         print("*" * 40)
         print(f"Progress: Epoch {epoch}/{num_epochs}")
         print("*" * 40)
@@ -183,8 +227,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir
 
         train_loss.append(tr_loss)
         val_loss.append(va_loss)
-        train_dice_old.append(tr_dice)
-        val_dice_old.append(va_dice)
+        train_dice_scores.append(tr_dice)
+        val_dice_scores.append(va_dice)
 
         # pretty print with labels
         def fmt_dice(dlist):
@@ -212,9 +256,12 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.001, output_dir
             )
             print(f"\nBest model saved with min dice: {best_val_min_dice:.4f}")
 
-    print("Completed model training; best model saved as max_dice_model.pth with dice:", round(best_val_min_dice, 4))
+    print("\nCompleted model training; best model saved as max_dice_model.pth with dice:", round(best_val_min_dice, 4))
 
-    return model, train_loss, val_loss, train_dice_old, val_dice_old
+    plot_dice(train_dice_scores, val_dice_scores, output_path='outputs/dice_progress.png')
+
+
+    return model, train_loss, val_loss, train_dice_scores, val_dice_scores
 
 if __name__ == "__main__":
     # data_path = "/home/groups/comp3710/HipMRI_Study_open/keras_slices_data"
@@ -222,12 +269,12 @@ if __name__ == "__main__":
     data_path = os.path.join(project_dir, "data")
 
     #hyperparams
-    num_epochs = 50
+    num_epochs = 10
     batch_size = 8
     learning_rate = 0.01
     
     # train the model with above params
-    model, train_loss, val_loss, train_dice_old, val_dice_old = main(
+    model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
         data_path=data_path,
         num_epochs=num_epochs,
         batch_size=batch_size,

@@ -153,24 +153,27 @@ def dice_score(logits: torch.Tensor, target: torch.Tensor, num_classes: int = 6)
     Function to claculate per-class Dice-Sorenson coefficient
     """
     pred = logits.argmax(dim=1)
+    scores = []
 
-    scores= []
     for c in range(num_classes):
         pred_i = (pred == c).float()
-        tgt_i  = (target == c).float()
+        tgt_i = (target == c).float()
 
         intersection = (pred_i * tgt_i).sum()
-        cardinality = pred_i.sum() + tgt_i.sum()
+        pred_sum = pred_i.sum()
+        tgt_sum = tgt_i.sum()
+        denom = pred_sum + tgt_sum
 
-        # if both empty, make 1
-        if cardinality == 0:
-            dice = 1
-        else:
-            dice = (2 * intersection / cardinality).item()
+        # Skip class if it's not present in the label (tgt_sum == 0)
+        if tgt_sum == 0:
+            # Append None or NaN to signal "ignored"
+            scores.append(float("nan"))
+            continue
 
+        dice = (2 * intersection / (denom + 1e-8)).item()
         scores.append(dice)
 
-    return scores   
+    return scores
 
 if __name__ == "__main__":
     model = BasicUNet(in_channels=1, 
