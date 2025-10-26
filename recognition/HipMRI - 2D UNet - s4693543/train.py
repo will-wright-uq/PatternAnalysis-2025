@@ -66,7 +66,7 @@ def plot_loss(train_losses, val_losses, output_path='loss_over_epochs.png'):
     plt.plot(epochs, val_losses, 'r-', label='Validation Loss')
 
     plt.xlabel('Epoch')
-    plt.ylabel('Loss (Cross-Entropy + Dice)')
+    plt.ylabel('Loss (Avg. of Cross-Entropy and Dice Loss)')
     plt.title('Training and Validation Loss over Epochs')
     plt.grid(True)
     plt.legend(loc='upper right')
@@ -270,7 +270,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     print("\nCompleted model training; best model saved as max_dice_model.pth with dice:", round(best_val_min_dice, 4))
 
     plot_dice(train_dice_scores, val_dice_scores, output_path='outputs/dice_progress.png')
-    plot_loss(train_loss, val_loss)
+    plot_loss(train_loss, val_loss, output_path='outputs/loss_progress.png')
 
     return model, train_loss, val_loss, train_dice_scores, val_dice_scores
 
@@ -282,7 +282,13 @@ if __name__ == "__main__":
     #hyperparams
     num_epochs = 50
     batch_size = 8
-    learning_rate = 0.01
+    learning_rate = 0.001
+
+    print("Starting training with params:"
+          f"\n    Data path: {data_path}"
+          f"\n    Num epochs: {num_epochs}"
+          f"\n    Batch size: {batch_size}"
+          f"\n    Learning rate: {learning_rate}\n")
     
     # train the model with above params
     model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
