@@ -8,9 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class DoubleConv(nn.Module):
-    """(Conv2d -> BN -> ReLU) x 2"""
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.net = nn.Sequential(
@@ -27,7 +25,6 @@ class DoubleConv(nn.Module):
 
 
 class Down(nn.Module):
-    """Downscale with MaxPool then DoubleConv"""
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.pool = nn.MaxPool2d(2)
@@ -39,7 +36,6 @@ class Down(nn.Module):
 
 
 class Up(nn.Module):
-    """Upscale then concatenate skip, then DoubleConv"""
     def __init__(self, in_ch, out_ch, bilinear=True):
         super().__init__()
         if bilinear:
@@ -66,7 +62,6 @@ class Up(nn.Module):
 
 
 class OutConv(nn.Module):
-    """Final 1x1 conv to logits"""
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.conv = nn.Conv2d(in_ch, out_ch, kernel_size=1)
@@ -77,8 +72,7 @@ class OutConv(nn.Module):
 
 class BasicUNet(nn.Module):
     """
-    A vanilla U-Net with 4 levels (encoder-bottleneck-decoder),
-    BatchNorm + ReLU, bilinear upsampling.
+    Basic UNet architecture
     """
     def __init__(self, in_channels=1, num_classes=6, base_features=64, bilinear=True):
         super().__init__()
@@ -147,33 +141,6 @@ class MCDiceLoss(nn.Module):
             dice_bc = dice_bc * class_weights.view(1, -1)
 
         return 1 - dice_bc.mean()
-    
-def dice_score(logits: torch.Tensor, target: torch.Tensor, num_classes: int = 6) -> list[float]:
-    """
-    Function to claculate per-class Dice-Sorenson coefficient
-    """
-    pred = logits.argmax(dim=1)
-    scores = []
-
-    for c in range(num_classes):
-        pred_i = (pred == c).float()
-        tgt_i = (target == c).float()
-
-        intersection = (pred_i * tgt_i).sum()
-        pred_sum = pred_i.sum()
-        tgt_sum = tgt_i.sum()
-        denom = pred_sum + tgt_sum
-
-        # Skip class if it's not present in the label (tgt_sum == 0)
-        if tgt_sum == 0:
-            # Append None or NaN to signal "ignored"
-            scores.append(float("nan"))
-            continue
-
-        dice = (2 * intersection / (denom + 1e-8)).item()
-        scores.append(dice)
-
-    return scores
 
 if __name__ == "__main__":
     model = BasicUNet(in_channels=1, 
