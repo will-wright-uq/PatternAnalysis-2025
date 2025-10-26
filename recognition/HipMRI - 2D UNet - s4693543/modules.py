@@ -116,6 +116,37 @@ class BasicUNet(nn.Module):
 
         logits = self.outc(u4)    # (B, num_classes, H, W)
         return logits
+    
+class DiceLoss(nn.Module):
+    """
+    Multi-class Dice loss function
+    """
+    def __init__(self, eps: float = 1.0):
+        super().__init__()
+        self.eps = eps
+
+    def forward(self, logits: torch.Tensor, target: torch.Tensor, class_weights: torch.Tensor | None = None) -> torch.Tensor:
+        # Convert logits to probabilities
+        probs = logits.softmax(dim=1)  # (B, C, H, W)
+
+        # One-hot encode targets to (B, C, H, W)
+        num_classes = probs.size(1)
+        tgt_oh = F.one_hot(target, num_classes=num_classes).movedim(-1, 1).to(probs.dtype)
+
+        # sum over pixels
+        B, C, H, W = probs.shape
+        probs_f = probs.reshape(B, C, -1)
+        tgt_f   = tgt_oh.reshape(B, C, -1)
+
+        intersection = (probs_f * tgt_f).sum(dim=-1)
+        cardinality  = probs_f.sum(dim=-1) + tgt_f.sum(dim=-1)
+
+        dice_bc = (2 * intersection + self.eps) / (cardinality + self.eps)
+
+        if class_weights is not None:
+            dice_bc = dice_bc * class_weights.view(1, -1)
+
+        return 1 - dice_bc.mean()
 
 if __name__ == "__main__":
     model = BasicUNet(in_channels=1, 
