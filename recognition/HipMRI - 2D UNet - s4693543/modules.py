@@ -117,9 +117,9 @@ class BasicUNet(nn.Module):
         logits = self.outc(u4)    # (B, num_classes, H, W)
         return logits
     
-class DiceLoss(nn.Module):
+class MCDiceLoss(nn.Module):
     """
-    Multi-class Dice loss function
+    Multi-class Dice loss
     """
     def __init__(self, eps: float = 1.0):
         super().__init__()
@@ -148,7 +148,7 @@ class DiceLoss(nn.Module):
 
         return 1 - dice_bc.mean()
     
-def dice_coefficient(logits: torch.Tensor, target: torch.Tensor, num_classes: int = 6) -> list[float]:
+def dice_score(logits: torch.Tensor, target: torch.Tensor, num_classes: int = 6) -> list[float]:
     """
     Function to claculate per-class Dice-Sorenson coefficient
     """
@@ -185,5 +185,5 @@ if __name__ == "__main__":
     print("Input:", x.shape, "Output:", out.shape)
 
     y = torch.randint(0, 6, (2, 256, 128))
-    criterion = DiceLoss()
+    criterion = MCDiceLoss()
     print("Dice loss:", round(criterion(out, y).item(), 4))
