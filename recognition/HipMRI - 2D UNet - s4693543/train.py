@@ -117,9 +117,15 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
                 p_sum[c] += pc.sum()
                 t_sum[c] += tc.sum()
 
-    # average stuff across the epoch
+    # average dice loss over epoch
     mean_loss = total_loss / max(1, len(loader))
-    epoch_dice = ((2*inter + eps) / (p_sum + t_sum + eps)).tolist()
+
+    # epoch dice calculation
+    denom = p_sum + t_sum
+    present = (t_sum > 0)
+    dice = torch.zeros(6, device=device)
+    dice[present] = (2 * inter[present] + eps) / (denom[present] + eps)
+    epoch_dice = [float(dice[c]) if present[c].item() else None for c in range(6)]
 
     return mean_loss, epoch_dice
 
@@ -156,9 +162,16 @@ def evaluation(model, loader, loss_fn, device):
                 inter[c] += (pc*tc).sum()
                 p_sum[c] += pc.sum()
                 t_sum[c] += tc.sum()
-                
+    
+    # average dice loss over epoch
     mean_loss = total_loss / max(1, len(loader))
-    epoch_dice = ((2*inter + eps) / (p_sum + t_sum + eps)).tolist()
+
+    # epoch dice calculation
+    denom = p_sum + t_sum
+    present = (t_sum > 0)
+    dice = torch.zeros(6, device=device)
+    dice[present] = (2 * inter[present] + eps) / (denom[present] + eps)
+    epoch_dice = [float(dice[c]) if present[c].item() else None for c in range(6)]
 
     return mean_loss, epoch_dice
 
@@ -201,9 +214,9 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
         weight_decay=1e-5
     )
 
-    warmup = torch.optim.lr_scheduler.LinearLR(optim, start_factor=0.1, total_iters=warmup_epochs)
-    poly   = torch.optim.lr_scheduler.LambdaLR(optim, lr_lambda=lambda e: (1 - e / (num_epochs - warmup_epochs))**0.9)
-    scheduler = torch.optim.lr_scheduler.SequentialLR(optim, schedulers=[warmup, poly], milestones=[warmup_epochs])
+    warmup = torch.optim.lr_scheduler.LinearLR(optimiser, start_factor=0.1, total_iters=warmup_epochs)
+    poly   = torch.optim.lr_scheduler.LambdaLR(optimiser, lr_lambda=lambda e: (1 - e / (num_epochs - warmup_epochs))**0.9)
+    scheduler = torch.optim.lr_scheduler.SequentialLR(optimiser, schedulers=[warmup, poly], milestones=[warmup_epochs])
 
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(
     #     optimiser, 
@@ -239,7 +252,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
 
         # step scheduler on the hardest class (min over classes)
         min_val_dice = min(va_dice)
-        scheduler.step(min_val_dice)
+        # scheduler.step(min_val_dice)
+        scheduler.step()
 
         train_loss.append(tr_loss)
         val_loss.append(va_loss)
