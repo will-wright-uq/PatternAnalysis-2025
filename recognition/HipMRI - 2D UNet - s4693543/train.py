@@ -60,8 +60,10 @@ def train_one_epoch(model, loader, loss_fn, opt, device):
 
     # average stuff across the epoch
     mean_loss = total_loss / max(1, len(loader))
-    mean_dice = [float(np.mean(class_dice)) if class_dice else 0.0
-                 for class_dice in per_class_dice]
+    mean_dice = [
+        float(np.mean(v)) if v else 0.0
+        for _, v in sorted(per_class_dice.items(), key=lambda kv: kv[0])
+    ]
 
     return mean_loss, mean_dice
 
