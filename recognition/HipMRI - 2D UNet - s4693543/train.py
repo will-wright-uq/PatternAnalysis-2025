@@ -3,6 +3,7 @@ File: train.py
 Author: William Wright
 Description: Source code for training, validating, testing, and saving the model. Model is imported from modules.py, and data loader is from dataset.py. Losses and metrics are plotted during training. 
 """
+
 from dataset import get_dataloaders
 from modules import BasicUNet, MCDiceLoss
 
@@ -11,7 +12,6 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 import matplotlib.pyplot as plt
 
 ####### PLOTTING HELPERS ########
@@ -177,7 +177,7 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     train_loader, val_loader, test_loader = get_dataloaders(
         data_path=data_path,
         batch_size=batch_size,
-        num_workers=4,
+        num_workers=2,
         categorical_masks=False
     )
 
@@ -203,8 +203,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimiser, 
         mode="max", 
-        factor=0.5, 
-        patience=5
+        factor=0.3, 
+        patience=10
     )
 
     # segmentation label mapping
@@ -280,9 +280,9 @@ if __name__ == "__main__":
     data_path = os.path.join(project_dir, "data")
 
     #hyperparams
-    num_epochs = 60
-    batch_size = 8
-    learning_rate = 0.01
+    num_epochs = 100
+    batch_size = 16
+    learning_rate = 0.001
     
     # train the model with above params
     model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
