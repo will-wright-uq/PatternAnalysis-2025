@@ -27,6 +27,8 @@ def load_saved_model(saved_model_path, device):
 
     print(f"\nLoading saved model from: {saved_model_path}")
     print(f"Best model loaded from epoch: {saved_model['epoch']} with:")
+    print(f"    Train Loss scores: {saved_model['train_loss']}")
+    print(f"    Train Dice scores: {saved_model['train_dice']}")
     print(f"    Validation Loss scores: {saved_model['val_loss']}")
     print(f"    Validation Dice scores: {saved_model['val_dice']}")
     
@@ -89,7 +91,7 @@ def main():
     model = load_saved_model(saved_model_path, device)
 
     print("\nLoading the test dataset")
-    _, _, test_loader = get_dataloaders(data_path, batch_size=8, num_workers=4)
+    _, _, test_loader = get_dataloaders(data_path, batch_size=1, num_workers=2)
     
     print("\nEvaluating performance on the test set...")
     mean_dice, test_preds, test_targets = evaluate(model, test_loader, device)

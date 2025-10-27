@@ -278,6 +278,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
                     "epoch": epoch,
                     "model_state_dict": model.state_dict(),
                     "optimiser_state_dict": optimiser.state_dict(),
+                    "train_dice": tr_dice,
+                    "train_loss": tr_loss,
                     "val_dice": val_dice,
                     "val_loss": val_loss,
                 },
