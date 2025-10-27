@@ -79,6 +79,27 @@ def evaluate(model, loader, device):
 
     return epoch_dice, test_preds, test_targets
 
+def plot_loss_by_split():
+    """
+    Plot train/val/test dice loss as a bar chart.
+    """
+    #TODO: implement this function to visualise loss by split
+    pass
+
+def plot_dice_by_split():
+    """
+    Plot train/val/test dice score as a bar chart.
+    """
+    #TODO: implement this function to visualise dice scores by split
+    pass
+
+def plot_seg_predictions():
+    """
+    Plot example segmentation predictions against the ground truth.
+    """
+    #TODO: implement this function to visualise segmentation predictions against ground truth
+    pass
+
 def main():
     # data_path = "/home/groups/comp3710/HipMRI_Study_open/keras_slices_data"
     project_dir = os.path.dirname(__file__)
