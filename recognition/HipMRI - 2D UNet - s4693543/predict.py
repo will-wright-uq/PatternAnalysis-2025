@@ -102,7 +102,7 @@ def plot_dice_by_split(train_dice, val_dice, test_dice, output_path):
     ax.set_xticks(x)
     ax.set_xticklabels(classes, rotation=30, ha='right')
     ax.set_ylim(0, 1.05)
-    ax.legend()
+    ax.legend(loc='lower right')
 
     for i, scores in enumerate([train_dice, val_dice, test_dice]):
         offset = (i - 1) * width

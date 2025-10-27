@@ -247,17 +247,17 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
         print("*" * 40)
 
         tr_loss, tr_dice = train_one_epoch(model, train_loader, loss_fn, optimiser, device)
-        val_loss, val_dice = evaluation(model, val_loader, loss_fn, device)
+        va_loss, va_dice = evaluation(model, val_loader, loss_fn, device)
 
         # step scheduler on the hardest class (min over classes)
-        min_val_dice = min(val_dice)
+        min_val_dice = min(va_dice)
         # scheduler.step(min_val_dice)
         scheduler.step()
 
         train_loss.append(tr_loss)
-        val_loss.append(val_loss)
+        val_loss.append(va_loss)
         train_dice_scores.append(tr_dice)
-        val_dice_scores.append(val_dice)
+        val_dice_scores.append(va_dice)
 
         # pretty print with labels
         def fmt_dice(dlist):
@@ -267,8 +267,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
         print(f"    Dice Loss (Train): {tr_loss:.4f}")
         print(f"    Dice Scores by class (Train): {fmt_dice(tr_dice)}")
         print(f"VALIDATION RESULTS")
-        print(f"    Dice Loss (Val): {val_loss:.4f}")
-        print(f"    Dice Scores by class (Val): {fmt_dice(val_dice)}")
+        print(f"    Dice Loss (Val): {va_loss:.4f}")
+        print(f"    Dice Scores by class (Val): {fmt_dice(va_dice)}")
 
         # checkpointing best model
         if min_val_dice > best_val_min_dice:
@@ -280,8 +280,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
                     "optimiser_state_dict": optimiser.state_dict(),
                     "train_dice": tr_dice,
                     "train_loss": tr_loss,
-                    "val_dice": val_dice,
-                    "val_loss": val_loss,
+                    "val_dice": va_dice,
+                    "val_loss": va_loss,
                 },
                 os.path.join(output_dir, "max_dice_model.pth"),
             )
