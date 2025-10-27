@@ -6,6 +6,8 @@ Description: Example usage of the trained model. Print any results or visualisat
 
 import os
 import torch
+import matplotlib.pyplot as plt
+import numpy as np
 
 from tqdm import tqdm
 from dataset import get_dataloaders
@@ -32,7 +34,7 @@ def load_saved_model(saved_model_path, device):
     print(f"    Validation Loss scores: {saved_model['val_loss']}")
     print(f"    Validation Dice scores: {saved_model['val_dice']}")
     
-    return model
+    return model, saved_model['train_dice'], saved_model['val_dice']
 
 def evaluate(model, loader, device):
     """
@@ -79,19 +81,40 @@ def evaluate(model, loader, device):
 
     return epoch_dice, test_preds, test_targets
 
-def plot_loss_by_split():
+def plot_dice_by_split(train_dice, val_dice, test_dice, output_path):
     """
-    Plot train/val/test dice loss as a bar chart.
+    Plot train/val/test dice score as a bar chart separated by class.
+        x-axis: classes (with 3 bars per class for train/val/test)
+        y-axis: dice score
     """
-    #TODO: implement this function to visualise loss by split
-    pass
+    classes = ['Background', 'Body', 'Bones', 'Bladder', 'Rectum', 'Prostate']
+    x = np.arange(len(classes))
+    width = 0.25
 
-def plot_dice_by_split():
-    """
-    Plot train/val/test dice score as a bar chart.
-    """
-    #TODO: implement this function to visualise dice scores by split
-    pass
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(x - width, train_dice, width, label='Train', color='#4c72b0')
+    ax.bar(x, val_dice, width, label='Validation', color='#55a868')
+    ax.bar(x + width, test_dice, width, label='Test', color='#c44e52')
+
+    ax.set_xlabel('Class', fontsize=12)
+    ax.set_ylabel('Dice Coefficient', fontsize=12)
+    ax.set_title('Dice Score by Dataset Split and Class', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(classes, rotation=30, ha='right')
+    ax.set_ylim(0, 1.05)
+    ax.legend()
+
+    for i, scores in enumerate([train_dice, val_dice, test_dice]):
+        offset = (i - 1) * width
+        for j, score in enumerate(scores):
+            ax.text(j + offset, score + 0.015, f"{score:.3f}", ha='center', va='bottom', fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()    
+
+    return
+    
 
 def plot_seg_predictions():
     """
@@ -109,7 +132,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}\n")
     
-    model = load_saved_model(saved_model_path, device)
+    model, train_dice, val_dice = load_saved_model(saved_model_path, device)
 
     print("\nLoading the test dataset")
     _, _, test_loader = get_dataloaders(data_path, batch_size=1, num_workers=2)
@@ -129,6 +152,8 @@ def main():
     ]
     for i, name in enumerate(class_labels):
         print(f"    {name}: Dice Score = {mean_dice[i]:.4f}")
+
+    plot_dice_by_split(train_dice, val_dice, mean_dice, output_path="outputs/dice_by_split.png")
 
 if __name__ == "__main__":
     main()
