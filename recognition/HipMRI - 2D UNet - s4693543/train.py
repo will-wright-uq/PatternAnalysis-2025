@@ -303,12 +303,14 @@ if __name__ == "__main__":
     num_epochs = 50
     batch_size = 8
     learning_rate = 0.0001
+    warmup_epochs = 5
 
     print("Starting training with params:"
           f"\n    Data path: {data_path}"
           f"\n    Num epochs: {num_epochs}"
           f"\n    Batch size: {batch_size}"
-          f"\n    Learning rate: {learning_rate}")
+          f"\n    Learning rate: {learning_rate}"
+          f"\n    Warmup epochs: {warmup_epochs}")
     
     # train the model with above params
     model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
@@ -317,5 +319,5 @@ if __name__ == "__main__":
         batch_size=batch_size,
         learning_rate=learning_rate,
         output_dir='outputs',
-        warmup_epochs=5
+        warmup_epochs=warmup_epochs
     )

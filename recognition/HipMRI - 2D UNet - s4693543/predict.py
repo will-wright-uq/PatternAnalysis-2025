@@ -196,9 +196,10 @@ def plot_seg_predictions(model=None, loader=None, device=None,
 
     n = len(samples)
 
+    # setup plotting
     fig, axes = plt.subplots(
         nrows=n, ncols=3,
-        figsize=(4, 3*n),
+        figsize=(5, 3*n),
         gridspec_kw={'wspace': 0.005, 'hspace': 0.2}
     )
 
@@ -277,6 +278,7 @@ def main():
     for i, name in enumerate(class_labels):
         print(f"    {name}: Dice Score = {mean_dice[i]:.4f}")
 
+    #call plotting fnuctions
     plot_dice_by_split(train_dice, val_dice, mean_dice, output_path="outputs/dice_by_split.png")
     plot_seg_predictions(
         model, test_loader, device,
