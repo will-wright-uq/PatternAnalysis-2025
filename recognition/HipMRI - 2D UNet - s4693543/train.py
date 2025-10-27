@@ -10,7 +10,6 @@ from modules import BasicUNet, MCDiceLoss
 import os
 from tqdm import tqdm
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
@@ -248,28 +247,28 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
         print("*" * 40)
 
         tr_loss, tr_dice = train_one_epoch(model, train_loader, loss_fn, optimiser, device)
-        va_loss, va_dice = evaluation(model, val_loader, loss_fn, device)
+        val_loss, val_dice = evaluation(model, val_loader, loss_fn, device)
 
         # step scheduler on the hardest class (min over classes)
-        min_val_dice = min(va_dice)
+        min_val_dice = min(val_dice)
         # scheduler.step(min_val_dice)
         scheduler.step()
 
         train_loss.append(tr_loss)
-        val_loss.append(va_loss)
+        val_loss.append(val_loss)
         train_dice_scores.append(tr_dice)
-        val_dice_scores.append(va_dice)
+        val_dice_scores.append(val_dice)
 
         # pretty print with labels
         def fmt_dice(dlist):
             return ", ".join(f"{labels_map[i]}: {dlist[i]:.4f}" for i in range(6))
         
-        print(f"\nTRAIN RESULTS EPOCH {epoch}")
-        print(f"    CE + Multi-Class Dice Loss (Train): {tr_loss:.4f}")
-        print(f"    Class-Based Dice Coefficients (Train): {fmt_dice(tr_dice)}")
-        print(f"VAL RESULTS EPOCH {epoch}")
-        print(f"    CE + Multi-Class Dice Loss (Val): {va_loss:.4f}")
-        print(f"    Class-Based Dice Coefficients (Val): {fmt_dice(va_dice)}")
+        print(f"\nTRAIN RESULTS")
+        print(f"    Dice Loss (Train): {tr_loss:.4f}")
+        print(f"    Dice Scores by class (Train): {fmt_dice(tr_dice)}")
+        print(f"VALIDATION RESULTS")
+        print(f"    Dice Loss (Val): {val_loss:.4f}")
+        print(f"    Dice Scores by class (Val): {fmt_dice(val_dice)}")
 
         # checkpointing best model
         if min_val_dice > best_val_min_dice:
@@ -279,8 +278,8 @@ def main(data_path, num_epochs=50, batch_size=8, learning_rate=0.01, output_dir=
                     "epoch": epoch,
                     "model_state_dict": model.state_dict(),
                     "optimiser_state_dict": optimiser.state_dict(),
-                    "val_dice": va_dice,
-                    "val_loss": va_loss,
+                    "val_dice": val_dice,
+                    "val_loss": val_loss,
                 },
                 os.path.join(output_dir, "max_dice_model.pth"),
             )
@@ -307,8 +306,7 @@ if __name__ == "__main__":
           f"\n    Data path: {data_path}"
           f"\n    Num epochs: {num_epochs}"
           f"\n    Batch size: {batch_size}"
-          f"\n    Learning rate: {learning_rate}"
-          f"\n    Warmup epochs: 5")
+          f"\n    Learning rate: {learning_rate}")
     
     # train the model with above params
     model, train_loss, val_loss, train_dice_scores, val_dice_scores = main(
