@@ -108,6 +108,14 @@ $$\text{Dice}_c = \frac{2\sum_{i} p_{ic} t_{ic} + \varepsilon}{\sum_{i} p_{ic} +
     ├── modules.py      # Basic 2D U-Net architecture and Dice loss function
     ├── train.py        # Training script
     ├── predict.py      # Evaluation and visualisation on test set
+    ├── readme_assets/  # README asset files
+    │ ├── dice_progress.png
+    │ ├── loss_progress.png
+    │ ├── dice_by_split.png
+    │ ├── training.png
+    │ ├── predict.png
+    │ └── predictions.png
+
 
     ├── data/           # Dataset -> saved locally or Rangpur path
     │ ├── keras_slices_seg_test
@@ -166,11 +174,11 @@ pip install numpy nibabel matplotlib tqdm
 python train.py
 ```
 Default hyper-parameters are set inside the functions, but can be overriden in the `main()` function. The parameters I used were:
-- Number of epochs: 50
-- Batch size: 8
-- Learning rate: 0.0001
-- Warmup epochs: 5
-- U-Net base features: 32
+- Number of epochs: `50`
+- Batch size: `8`
+- Learning rate: `0.0001`
+- Warmup epochs: `5`
+- U-Net base features: `32`
 
 Outputs:    
 - The best checkpoint is saved to `outputs/max_dice_model.pth`
@@ -178,15 +186,15 @@ Outputs:
 - Each epoch prints the per-class Dice scores (for train and val), as well as the Dice loss
 
 #### Training image
-![img](./readme_assets/training.png)
+![img](./readme_assets/training.png)  
 *Figure 1: Training progress outputs when running `train.py`*
 
 #### Training loss
-![img](./readme_assets/loss_progress.png)
+![img](./readme_assets/loss_progress.png)  
 *Figure 2: Multi-class dice loss over epochs during training*
 
 #### Training loss
-![img](./readme_assets/dice_progress.png)
+![img](./readme_assets/dice_progress.png)  
 *Figure 3: Per-class Dice scores over epochs during training*
 
 ### Testing
@@ -211,13 +219,13 @@ The best model achieved the following metrics:
 Therefore, the task was completed successfully as all classes had a Dice score over 0.75. 
 
 #### Training output
-![img](./readme_assets/predict.png)
+![img](./readme_assets/predict.png)  
 *Figure 4: Output when loading saved model and running prediction on test set*
 
 #### Dice scores by class during train/val/test
-![img](./readme_assets/dice_by_split.png)
+![img](./readme_assets/dice_by_split.png)  
 *Figure 5: Per-class Dice scores during train/val/test splits for best saved model*
 
 #### Example slice segmentations against ground truth
-![img](./readme_assets/predictions.png)
+![img](./readme_assets/predictions.png)  
 *Figure 6: Example input -> prediction -> ground truth for best saved model on samples containing all classes*
