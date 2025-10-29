@@ -7,6 +7,8 @@
 
 **Note**: the language of 'Dice score' and 'Dice coefficient' may be used interchangeably, but both refer to the [Dice-Sørensen coefficient](https://en.wikipedia.org/wiki/Dice-S%C3%B8rensen_coefficient). 
 
+**Disclaimer**: ChatGPT 5 was used to help assist with explaining the neural network architecture and producing the LaTeX equations for the Dice loss and Dice scores. This was done by uploading my `modules.py` script and prompting to explain the blocks and architecture. 
+
 ## Overview
 This project performs 2D segmentation of the HipMRI dataset to segment the following classes: 
 - 0 = Background
@@ -16,9 +18,13 @@ This project performs 2D segmentation of the HipMRI dataset to segment the follo
 - 4 = Rectum
 - 5 = Prostate,
 
-as outlined in the `BriefDataDescription.txt`, with the original dataset is found [here](https://data.csiro.au/collection/csiro:51392v2?redirected=true).
+as outlined in the `BriefDataDescription.txt` provided with the original dataset [here](https://data.csiro.au/collection/csiro:51392v2?redirected=true).
 
-The algorithm is a PyTorch implementation of a U-Net-style encoder–decoder with skip connections and a multi-class Dice loss function. This targets strong performance on the prostate class while maintaining balanced accuracy across all classes. It helps to solve the problem of manual segmentation by humans by providing a reasonably accurate segmentation through a neural network model.
+The algorithm is a PyTorch implementation of a U-Net-style encoder–decoder with skip connections and a multi-class Dice loss function. This targets strong performance on the prostate class while maintaining balanced accuracy across all classes. 
+
+It helps to solve the problem of manual segmentation by humans by providing a reasonably accurate segmentation of MRI images through a neural network model. This can help significantly increase efficiency and reducing the amount of manual labour required with segmentation (may take multiple hours by a human). It can also ensure consistency and reproducability whereas humans may vary their segmentation. 
+
+Therefore, it helps solve many practical challenges by giving precise segmentation with consistency, improve time efficiency and enhancing diagnosis and treatment planning. An accurate model would then be scalable and generalisable to new datasets and patients with minimal additional effort. 
 
 ## How it works
 The MRI images and corresponding labels are loaded from Nifti (`.nii.gz`) files, which are then resized to a consistent image size, and fed as single-channel inputs to a 2D U-Net. The network has contracting path (downsampling via max-pooling) and an expansive path (upsampling plus skip connections), producing per-pixel class logits. Training uses a custom defined multi-class Dice loss computed on softmax probabilities against one-hot encoded labels, which directly optimise the 'overlap quality' for imbalanced classes. A learning rate scheduler is also implemented, which combines a short linear warm-up with a polynomial decay. We store the per-class Dice scores on the train and validation datasets at each epoch. Models are saved/overwritten when the "minimum Dice score across all six classes" is improved from the previous save. We repeat the same on the test set by reporting the per-class Dice scores and produce accompanying visualisations. You can find a background paper on the topic [here](https://arxiv.org/abs/1505.04597).
@@ -48,7 +54,7 @@ This project uses a basic 2D U-Net defined in `modules.py` with standard `Double
 
 ### Encoder -> Bottleneck -> Decoder
 
-Input (B, 1, 256, 128) and `bf = 32`:
+Input (B, 1, 256, 128) and base features = 32:
 
 - Encoder
   - `inc`: DoubleConv(1 -> 32) -> (B, 32, 256, 128) (skip-1)
@@ -152,7 +158,7 @@ The dataset provided contains train/validate/test splits already, hence no furth
 ## Dependencies & Reproducibility
 
 ### Installs
-**Python:** 3.11.4  
+**Python:** 3.11.4 (3.10+ is fine)   
 **Core libraries:**
 - `torch`
 - `torchvision`
@@ -176,7 +182,7 @@ python train.py
 Default hyper-parameters are set inside the functions, but can be overriden in the `main()` function. The parameters I used were:
 - Number of epochs: `50`
 - Batch size: `8`
-- Learning rate: `0.0001`
+- Learning rate: `1e-4`
 - Warmup epochs: `5`
 - U-Net base features: `32`
 
@@ -189,13 +195,19 @@ Outputs:
 ![img](./readme_assets/training.png)  
 *Figure 1: Training progress outputs when running `train.py`*
 
+Figure 1 shows the last 2 epochs of training on Google Colab notebook. It also shows confirmation of the plots and model being saved to the outputs directory.
+
 #### Training loss
 ![img](./readme_assets/loss_progress.png)  
 *Figure 2: Multi-class dice loss over epochs during training*
 
+Figure 2 shows how the Dice loss is decreasing over the number of epochs for both the train (blue) and validation (red) splits. The expected behaviour is shown with the validation loss being higher than the train loss (as it is trained on the training dataset, not the validation). The validation loss appears to not show significant improvement beyond epoch 30. 
+
 #### Training loss
 ![img](./readme_assets/dice_progress.png)  
 *Figure 3: Per-class Dice scores over epochs during training*
+
+Figure 3 shows the Dice coefficients for each class for the train (blue) and validation (red) datasets. We see pretty stable convergence for the background and body classes. The bones class is also quite stable. The bladder class appears to have more separation between the train and validation datasets. The rectum and prostate classes slowly improve with the number of epochs.
 
 ### Testing
 ```bash
@@ -222,10 +234,16 @@ Therefore, the task was completed successfully as all classes had a Dice score o
 ![img](./readme_assets/predict.png)  
 *Figure 4: Output when loading saved model and running prediction on test set*
 
+Figure 4 shows the output from running the `train.py` script on the test dataset.
+
 #### Dice scores by class during train/val/test
 ![img](./readme_assets/dice_by_split.png)  
 *Figure 5: Per-class Dice scores during train/val/test splits for best saved model*
 
+Figure 5 shows the dice score by class for each of the training, validation, and test splits. The expected behaviour is that the train dataset has the highest score, with the validation and test sets having a slightly worse score but similar to each other. Ideally, the validation score should be close to the test score as this would indicate a low generalisation gap (i.e. not overfitting). We can see this is largely true except for the Bladder class where the test Dice score was far higher than the validation. This is likely just a case of randomness with the validation/test splits. 
+
 #### Example slice segmentations against ground truth
 ![img](./readme_assets/predictions.png)  
 *Figure 6: Example input -> prediction -> ground truth for best saved model on samples containing all classes*
+
+Figure 6 shows example slices containing all 6 classes in the ground truth. The first column is the input image, the second is the prediction from the U-Net model, and the third is the ground truth or labelled/segmented data. We also display the mean dice score below the predicted slice. We can see the predictions are largely accurate when compared to the ground truth, successfully identifying the key components of the MRI image for these samples.
